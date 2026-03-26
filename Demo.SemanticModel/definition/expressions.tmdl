@@ -1,0 +1,113 @@
+expression data_inicial = #date(2024, 11, 1) meta [IsParameterQuery=true, Type="Date", IsParameterQueryRequired=true]
+	lineageTag: 237af032-b383-4cf1-b88e-fa866b6620ec
+	queryGroup: Paramentros
+
+	annotation PBI_NavigationStepName = Navegação
+
+	annotation PBI_ResultType = Date
+
+expression base_transacoes = "C:\Users\alerr\performancebi.com.br\Performancebi - Cursos e Treinamentos\ALISON_PEZZOTTI\youtube-20241111-git-github\transacoes.xlsx" meta [IsParameterQuery=true, Type="Text", IsParameterQueryRequired=true]
+	lineageTag: 41af01d2-5b7e-4641-a938-222bf1b60d3d
+	queryGroup: Paramentros
+
+	annotation PBI_NavigationStepName = Navegação
+
+	annotation PBI_ResultType = Text
+
+expression data_final = DateTime.Date(DateTime.LocalNow())
+	lineageTag: 7192f8df-8598-4a8a-ae36-2ee853c29dca
+	queryGroup: Paramentros
+
+	annotation PBI_NavigationStepName = Navegação
+
+	annotation PBI_ResultType = Date
+
+expression getCotacoes = ```
+		let
+		    getCotacoes = (dataInicial as date, dataFinal as date, moeda as text, pagina as number) as table =>
+		    let
+		        url = "https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata",
+		        endpoint = "CotacaoMoedaPeriodo(moeda=@moeda,dataInicial=@dataInicial,dataFinalCotacao=@dataFinalCotacao)",
+		        query = [
+		            #"@moeda" = "'" & moeda & "'",
+		            #"@dataInicial" = "'" &  Date.ToText(dataInicial,"MM-dd-yyyy") & "'",
+		            #"@dataFinalCotacao" = "'" & Date.ToText(dataFinal,"MM-dd-yyyy") & "'",
+		            #"$top" = Number.ToText(100),
+		            #"$skip" = Number.ToText((pagina-1)*100),
+		            #"$format"= "json"
+		        ],
+		        request = Web.Contents(
+		            url,
+		            [ RelativePath = endpoint, Query = query ]
+		        ),
+		        response = Json.Document(request, 65001), 
+		        lista = response[value] 
+		    in
+		        Table.FromRecords(lista), 
+		
+		    getCotacoesPaginacao = (dataInicial as date, dataFinal as date, moeda as text) as table =>
+		    let
+		        todasPaginas = List.Generate(
+		            ( ) => [ pagina = 1, cotacao = try getCotacoes(dataInicial, dataFinal, moeda, pagina) otherwise null ],
+		                each [cotacao] <> null and Table.RowCount([cotacao]) > 0,
+		                each [ pagina = [pagina] + 1, cotacao = try getCotacoes( dataInicial, dataFinal, moeda, pagina ) otherwise null],
+		                each [cotacao]
+		        ) 
+		    in
+		        Table.AddColumn(Table.Combine(todasPaginas), "Moeda", each moeda, type text),
+		
+		    processaCotacoes = (dataInicial as date, dataFinal as date) as table =>
+		    let
+		        moedas = List.Select(moedas[Moeda], each _ <> "BRL"),
+		
+		        todasCotacoes = List.Accumulate(
+		            moedas,
+		            #table({},{}),
+		            (s, c) => 
+		            Table.Combine({s, getCotacoesPaginacao(dataInicial, dataFinal, c)})
+		
+		        ),
+		
+		        colunasSelecionadas = Table.SelectColumns(
+		            todasCotacoes,
+		            { "Moeda", "dataHoraCotacao", "cotacaoCompra", "tipoBoletim" }
+		        ),
+		
+		        colunasRenomeadas = Table.RenameColumns(
+		            colunasSelecionadas,
+		            {
+		                {"dataHoraCotacao", "DataHora"},
+		                {"cotacaoCompra", "Cotacao"},
+		                {"tipoBoletim", "TipoBoletim"}
+		            }
+		        ),
+		
+		        tipoAlterado = Table.TransformColumnTypes(
+		            colunasRenomeadas,
+		            {
+		                {"DataHora", DateTime.Type},
+		                {"Cotacao", Number.Type}, 
+		                {"TipoBoletim", Text.Type}
+		            }
+		        ),
+		
+		        dataAdicionada = Table.AddColumn(
+		            tipoAlterado,
+		            "Data", 
+		            each DateTime.Date([DataHora]),
+		            type date
+		        )
+		
+		    in
+		        dataAdicionada   
+		
+		in
+		    processaCotacoes
+		```
+	lineageTag: 4e801354-2ff2-4237-99b2-b35eeb1f952f
+	queryGroup: Funcoes
+
+	annotation PBI_NavigationStepName = Navegação
+
+	annotation PBI_ResultType = Function
+
