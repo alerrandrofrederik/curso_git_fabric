@@ -10,10 +10,10 @@
     "tabOrder": 0
   },
   "visual": {
-    "visualType": "areaChart",
+    "visualType": "tableEx",
     "query": {
       "queryState": {
-        "Category": {
+        "Values": {
           "projections": [
             {
               "field": {
@@ -27,31 +27,49 @@
                 }
               },
               "queryRef": "calendario.Data",
-              "nativeQueryRef": "Data",
-              "active": true
-            }
-          ]
-        },
-        "Y": {
-          "projections": [
+              "nativeQueryRef": "Data"
+            },
             {
               "field": {
-                "Aggregation": {
+                "Measure": {
                   "Expression": {
-                    "Column": {
-                      "Expression": {
-                        "SourceRef": {
-                          "Entity": "cotacoes"
-                        }
-                      },
-                      "Property": "Cotacao"
+                    "SourceRef": {
+                      "Entity": "transacoes"
                     }
                   },
-                  "Function": 1
+                  "Property": "Valor Total"
                 }
               },
-              "queryRef": "Avg(cotacoes.Cotacao)",
-              "nativeQueryRef": "Cotacao"
+              "queryRef": "transacoes.Valor Total",
+              "nativeQueryRef": "Valor Total"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "cotacoes"
+                    }
+                  },
+                  "Property": "Cotação corrigida"
+                }
+              },
+              "queryRef": "cotacoes.Cotação corrigida",
+              "nativeQueryRef": "Cotação corrigida"
+            },
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "transacoes"
+                    }
+                  },
+                  "Property": "Total R$"
+                }
+              },
+              "queryRef": "transacoes.Total R$",
+              "nativeQueryRef": "Total R$"
             }
           ]
         }
